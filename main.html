@@ -1,495 +1,900 @@
-import React, { useState, useEffect } from 'react';
-import { Calculator, TrendingUp, Plus } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Calculator & Notes App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-export default function MergedStockApp() {
-  // Calculator states
-  const [price1, setPrice1] = useState('');
-  const [volume1, setVolume1] = useState('');
-  const [price2, setPrice2] = useState('');
-  const [volume2, setVolume2] = useState('');
-  const [result, setResult] = useState(null);
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
 
-  // Stock notes states
-  const [stocks, setStocks] = useState([]);
-  const [stockInput, setStockInput] = useState('');
-  const [ratioInput, setRatioInput] = useState('');
-  const [targetInput, setTargetInput] = useState('');
-  const [percentageInput, setPercentageInput] = useState('');
-  const [sortField, setSortField] = useState('date');
-  const [sortOrder, setSortOrder] = useState('desc');
-  const [statusMessage, setStatusMessage] = useState('');
-  const [statusType, setStatusType] = useState('');
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
 
-  // Format number with commas for display
-  const formatNumber = (num) => {
-    if (!num) return '';
-    const cleanNum = num.toString().replace(/[^\d.]/g, '');
-    const parts = cleanNum.split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return parts.join('.');
-  };
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
-  // Remove commas for calculation
-  const parseNumber = (str) => {
-    if (!str) return 0;
-    return parseFloat(str.replace(/,/g, '')) || 0;
-  };
+        .section-title {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+            padding: 10px;
+            background: linear-gradient(45deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 10px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+        }
 
-  // Handle volume input with automatic comma formatting
-  const handleVolumeChange = (value, setter) => {
-    const numericValue = value.replace(/[^\d]/g, '');
-    const formattedValue = numericValue ? formatNumber(numericValue) : '';
-    setter(formattedValue);
-  };
+        /* Calculator Section */
+        .calculator-section {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+        }
 
-  // Handle price input (allows decimals)
-  const handlePriceChange = (value, setter) => {
-    const cleanValue = value.replace(/[^\d.,]/g, '');
-    setter(cleanValue);
-  };
+        .calculator-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
 
-  // Calculate weighted average
-  const calculateWeightedAverage = () => {
-    const p1 = parseNumber(price1);
-    const v1 = parseNumber(volume1);
-    const p2 = parseNumber(price2);
-    const v2 = parseNumber(volume2);
+        .series-box {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid;
+        }
 
-    if (p1 <= 0 || v1 <= 0 || p2 <= 0 || v2 <= 0) {
-      setResult({ error: 'All values must be greater than 0' });
-      return;
-    }
+        .series-1 {
+            border-color: #4CAF50;
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.05), rgba(76, 175, 80, 0.1));
+        }
 
-    const totalValue = (p1 * v1) + (p2 * v2);
-    const totalVolume = v1 + v2;
-    const weightedAverage = totalValue / totalVolume;
+        .series-2 {
+            border-color: #2196F3;
+            background: linear-gradient(135deg, rgba(33, 150, 243, 0.05), rgba(33, 150, 243, 0.1));
+        }
 
-    setResult({
-      weightedAverage: weightedAverage.toFixed(4),
-      totalValue: totalValue.toLocaleString(),
-      totalVolume: totalVolume.toLocaleString(),
-      price1: p1,
-      volume1: v1.toLocaleString(),
-      price2: p2,
-      volume2: v2.toLocaleString()
-    });
-  };
+        .series-title {
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            text-align: center;
+        }
 
-  // Auto-calculate when inputs change
-  useEffect(() => {
-    if (price1 && volume1 && price2 && volume2) {
-      calculateWeightedAverage();
-    } else {
-      setResult(null);
-    }
-  }, [price1, volume1, price2, volume2]);
+        .calc-input-group {
+            margin-bottom: 15px;
+        }
 
-  // Transfer calculated price to target input
-  const transferToTarget = () => {
-    if (result && !result.error) {
-      setTargetInput(result.weightedAverage);
-      showStatus('Weighted average transferred to target price!', 'success');
-    }
-  };
+        .calc-input-group label {
+            display: block;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
 
-  // Get current date time
-  const getCurrentDateTime = () => {
-    const now = new Date();
-    return now.toLocaleString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
+        .calc-input-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: monospace;
+            transition: all 0.3s ease;
+        }
 
-  // Add stock to notes
-  const addStock = () => {
-    const stockName = stockInput.trim();
-    const ratio = parseFloat(ratioInput) || 0;
-    const target = parseFloat(targetInput) || 0;
-    const percentage = parseFloat(percentageInput) || 0;
-    
-    if (!stockName) {
-      showStatus('Please enter a stock name!', 'error');
-      return;
-    }
+        .calc-input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
 
-    const stock = {
-      id: Date.now(),
-      datetime: getCurrentDateTime(),
-      stock: stockName,
-      ratio: ratio,
-      target: target,
-      percentage: percentage
-    };
+        .result-section {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, rgba(156, 39, 176, 0.1), rgba(233, 30, 99, 0.1));
+            border: 2px solid rgba(156, 39, 176, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
 
-    setStocks(prev => [...prev, stock]);
-    
-    // Clear inputs
-    setStockInput('');
-    setRatioInput('');
-    setTargetInput('');
-    setPercentageInput('');
-    
-    showStatus('Stock added successfully!', 'success');
-  };
+        .result-main {
+            text-align: center;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #e1e5e9;
+        }
 
-  // Delete stock
-  const deleteStock = (id) => {
-    setStocks(prev => prev.filter(stock => stock.id !== id));
-    showStatus('Stock deleted successfully!', 'success');
-  };
+        .result-label {
+            font-weight: 600;
+            color: #555;
+            font-size: 16px;
+        }
 
-  // Show status message
-  const showStatus = (message, type) => {
-    setStatusMessage(message);
-    setStatusType(type);
-    setTimeout(() => {
-      setStatusMessage('');
-      setStatusType('');
-    }, 3000);
-  };
+        .result-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #9c27b0;
+            font-family: monospace;
+        }
 
-  // Sort stocks
-  const sortedStocks = [...stocks].sort((a, b) => {
-    let valueA, valueB;
-    
-    switch(sortField) {
-      case 'date':
-        valueA = new Date(a.datetime);
-        valueB = new Date(b.datetime);
-        break;
-      case 'stock':
-        valueA = a.stock.toLowerCase();
-        valueB = b.stock.toLowerCase();
-        break;
-      case 'ratio':
-        valueA = a.ratio;
-        valueB = b.ratio;
-        break;
-      case 'target':
-        valueA = a.target;
-        valueB = b.target;
-        break;
-      case 'percentage':
-        valueA = a.percentage;
-        valueB = b.percentage;
-        break;
-      default:
-        return 0;
-    }
-    
-    if (sortOrder === 'asc') {
-      return valueA > valueB ? 1 : valueA < valueB ? -1 : 0;
-    } else {
-      return valueA < valueB ? 1 : valueA > valueB ? -1 : 0;
-    }
-  });
+        .result-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
 
-  // Reset calculator
-  const resetCalculator = () => {
-    setPrice1('');
-    setVolume1('');
-    setPrice2('');
-    setVolume2('');
-    setResult(null);
-  };
+        .result-detail {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e1e5e9;
+            text-align: center;
+        }
 
-  // Clear all stocks
-  const clearAllStocks = () => {
-    if (window.confirm('Are you sure you want to clear all stocks?')) {
-      setStocks([]);
-      showStatus('All stocks cleared!', 'success');
-    }
-  };
+        .transfer-section {
+            text-align: center;
+            margin: 20px 0;
+        }
 
-  // Save data
-  const saveData = () => {
-    const dataStr = JSON.stringify(stocks, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(dataBlob);
-    link.download = `stock_notes_${new Date().toISOString().slice(0, 10)}.json`;
-    link.click();
-    
-    showStatus('Data saved successfully!', 'success');
-  };
+        .transfer-btn {
+            background: linear-gradient(45deg, #FF9800, #F57C00);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
-      <div className="max-w-7xl mx-auto space-y-8">
+        .transfer-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.4);
+        }
+
+        .transfer-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Stock Notes Section */
+        .input-section {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .input-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+
+        input[type="text"], input[type="number"] {
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .sorting-section {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            text-align: center;
+        }
+
+        .sort-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .sort-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        select {
+            padding: 8px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .add-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .add-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .save-btn {
+            background: linear-gradient(45deg, #2196F3, #1976D2);
+            color: white;
+        }
+
+        .save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+        }
+
+        .upload-btn {
+            background: linear-gradient(45deg, #FF9800, #F57C00);
+            color: white;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.4);
+        }
+
+        .clear-btn {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+            color: white;
+        }
+
+        .clear-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
+        }
+
+        .table-container {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e1e5e9;
+            transition: background-color 0.3s ease;
+        }
+
+        tr:hover td {
+            background-color: rgba(102, 126, 234, 0.05);
+        }
+
+        tr:nth-child(even) {
+            background-color: rgba(248, 249, 250, 0.5);
+        }
+
+        .delete-btn {
+            background: linear-gradient(45deg, #ff4757, #ff3838);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .delete-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 3px 10px rgba(255, 71, 87, 0.4);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .status-message {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 600;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+        }
+
+        .status-message.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .status-message.success {
+            background: rgba(76, 175, 80, 0.1);
+            color: #4CAF50;
+            border: 2px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .status-message.error {
+            background: rgba(244, 67, 54, 0.1);
+            color: #f44336;
+            border: 2px solid rgba(244, 67, 54, 0.3);
+        }
+
+        .margin-ratio-cell {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .target-cell {
+            font-weight: 600;
+            color: #28a745;
+        }
+
+        .up-percentage {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .down-percentage {
+            color: #dc3545;
+            font-weight: 600;
+        }
+
+        .highlight-target {
+            background-color: rgba(255, 193, 7, 0.2) !important;
+            border: 2px solid #ffc107;
+            animation: highlight-pulse 1s ease-in-out;
+        }
+
+        @keyframes highlight-pulse {
+            0%, 100% { background-color: rgba(255, 193, 7, 0.2); }
+            50% { background-color: rgba(255, 193, 7, 0.4); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .calculator-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .result-details {
+                grid-template-columns: 1fr;
+            }
+
+            .input-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .sort-controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            table {
+                font-size: 13px;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Stock Calculator & Notes</h1>
         
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
-            📈 Stock Trading Calculator & Notes
-          </h1>
-          <p className="text-gray-600">Calculate weighted averages and track your stock positions</p>
-        </div>
-
-        {/* Status Message */}
-        {statusMessage && (
-          <div className={`text-center p-4 rounded-lg font-medium transition-all duration-300 ${
-            statusType === 'success' 
-              ? 'bg-green-100 text-green-700 border-2 border-green-200' 
-              : 'bg-red-100 text-red-700 border-2 border-red-200'
-          }`}>
-            {statusMessage}
-          </div>
-        )}
-
-        {/* Calculator Section */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <div className="flex items-center justify-center mb-6">
-            <Calculator className="w-8 h-8 text-blue-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-800">Volume Weighted Average Calculator</h2>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8 mb-8">
-            {/* Series 1 */}
-            <div className="bg-blue-50 p-6 rounded-xl border-2 border-blue-200">
-              <h3 className="text-xl font-semibold text-blue-800 mb-4">Series 1</h3>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Price 1 ($)</label>
-                <input
-                  type="text"
-                  value={price1}
-                  onChange={(e) => handlePriceChange(e.target.value, setPrice1)}
-                  placeholder="0.00"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Volume 1 (units)</label>
-                <input
-                  type="text"
-                  value={volume1}
-                  onChange={(e) => handleVolumeChange(e.target.value, setVolume1)}
-                  placeholder="0"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg font-mono"
-                />
-              </div>
-            </div>
-
-            {/* Series 2 */}
-            <div className="bg-green-50 p-6 rounded-xl border-2 border-green-200">
-              <h3 className="text-xl font-semibold text-green-800 mb-4">Series 2</h3>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Price 2 ($)</label>
-                <input
-                  type="text"
-                  value={price2}
-                  onChange={(e) => handlePriceChange(e.target.value, setPrice2)}
-                  placeholder="0.00"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none text-lg font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Volume 2 (units)</label>
-                <input
-                  type="text"
-                  value={volume2}
-                  onChange={(e) => handleVolumeChange(e.target.value, setVolume2)}
-                  placeholder="0"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none text-lg font-mono"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Calculator Results */}
-          {result && (
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border-2 border-purple-200 mb-6">
-              <h3 className="text-xl font-semibold text-purple-800 mb-4">Calculation Results</h3>
-              
-              {result.error ? (
-                <div className="text-red-600 font-medium">{result.error}</div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center p-4 bg-white rounded-lg border">
-                    <span className="font-medium text-gray-700">Volume Weighted Average Price:</span>
-                    <span className="text-2xl font-bold text-purple-600">${result.weightedAverage}</span>
-                  </div>
-                  
-                  <div className="flex justify-center">
-                    <button
-                      onClick={transferToTarget}
-                      className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 flex items-center gap-2"
-                    >
-                      <TrendingUp className="w-5 h-5" />
-                      Use as Target Price
-                    </button>
-                  </div>
+        <!-- Volume Weighted Average Calculator Section -->
+        <div class="calculator-section">
+            <div class="section-title">🧮 Volume Weighted Average Calculator</div>
+            
+            <div class="calculator-grid">
+                <div class="series-box series-1">
+                    <div class="series-title">📈 Series 1</div>
+                    <div class="calc-input-group">
+                        <label>Price 1 ($)</label>
+                        <input type="text" id="price1" placeholder="0.00">
+                    </div>
+                    <div class="calc-input-group">
+                        <label>Volume 1 (units)</label>
+                        <input type="text" id="volume1" placeholder="0">
+                    </div>
                 </div>
-              )}
-            </div>
-          )}
 
-          <div className="text-center">
-            <button
-              onClick={resetCalculator}
-              className="bg-gray-500 hover:bg-gray-600 text-white font-medium py-3 px-8 rounded-lg transition-colors duration-200"
-            >
-              Reset Calculator
-            </button>
-          </div>
+                <div class="series-box series-2">
+                    <div class="series-title">📉 Series 2</div>
+                    <div class="calc-input-group">
+                        <label>Price 2 ($)</label>
+                        <input type="text" id="price2" placeholder="0.00">
+                    </div>
+                    <div class="calc-input-group">
+                        <label>Volume 2 (units)</label>
+                        <input type="text" id="volume2" placeholder="0">
+                    </div>
+                </div>
+
+                <div class="result-section" id="calculatorResult" style="display: none;">
+                    <div class="result-main">
+                        <div class="result-label">Volume Weighted Average Price:</div>
+                        <div class="result-value" id="resultValue">$0.0000</div>
+                    </div>
+                    <div class="result-details">
+                        <div class="result-detail">
+                            <div style="font-weight: 600; color: #555;">Total Value</div>
+                            <div style="font-size: 1.2em; font-weight: bold; color: #2196F3;" id="totalValue">$0</div>
+                        </div>
+                        <div class="result-detail">
+                            <div style="font-weight: 600; color: #555;">Total Volume</div>
+                            <div style="font-size: 1.2em; font-weight: bold; color: #4CAF50;" id="totalVolume">0 units</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="transfer-section">
+                <button class="transfer-btn" id="transferBtn" onclick="transferToTarget()" disabled>
+                    ⬇️ Transfer to Target Price
+                </button>
+            </div>
         </div>
 
-        {/* Stock Notes Section */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <div className="flex items-center justify-center mb-6">
-            <TrendingUp className="w-8 h-8 text-green-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-800">Stock Notes</h2>
-          </div>
-
-          {/* Input Section */}
-          <div className="bg-gray-50 p-6 rounded-xl mb-6">
-            <div className="grid md:grid-cols-4 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Stock Symbol</label>
-                <input
-                  type="text"
-                  value={stockInput}
-                  onChange={(e) => setStockInput(e.target.value)}
-                  placeholder="AAPL, TSLA, etc."
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ratio</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={ratioInput}
-                  onChange={(e) => setRatioInput(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Target Price ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={targetInput}
-                  onChange={(e) => setTargetInput(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none bg-green-50"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Up/Down %</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={percentageInput}
-                  onChange={(e) => setPercentageInput(e.target.value)}
-                  placeholder="±0.00"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-                />
-              </div>
+        <!-- Stock Notes Section -->
+        <div class="section-title">📋 Stock Notes Manager</div>
+        
+        <div class="input-section">
+            <div class="input-grid">
+                <div class="input-group">
+                    <label for="stockInput">Stock:</label>
+                    <input type="text" id="stockInput" placeholder="Enter stock symbol/name..." />
+                </div>
+                <div class="input-group">
+                    <label for="ratioInput">Margin Ratio:</label>
+                    <input type="number" id="ratioInput" step="0.01" placeholder="Enter margin ratio..." />
+                </div>
+                <div class="input-group">
+                    <label for="targetInput">Target:</label>
+                    <input type="number" id="targetInput" step="0.01" placeholder="Enter target..." />
+                </div>
+                <div class="input-group">
+                    <label for="percentageInput">Up/Down %:</label>
+                    <input type="number" id="percentageInput" step="0.01" placeholder="Enter % change..." />
+                </div>
             </div>
-
-            <div className="flex gap-4 justify-center flex-wrap">
-              <button
-                onClick={addStock}
-                className="bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 flex items-center gap-2"
-              >
-                <Plus className="w-5 h-5" />
-                Add Stock
-              </button>
-              <button
-                onClick={saveData}
-                className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200"
-              >
-                💾 Save Data
-              </button>
-              <button
-                onClick={clearAllStocks}
-                className="bg-red-500 hover:bg-red-600 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200"
-              >
-                🗑️ Clear All
-              </button>
+            
+            <div class="button-group">
+                <button class="add-btn" onclick="addStock()">➕ Add Stock</button>
+                <button class="save-btn" onclick="saveData()">💾 Save Data</button>
+                <button class="upload-btn" onclick="document.getElementById('fileInput').click()">📁 Upload Data</button>
+                <button class="clear-btn" onclick="clearAll()">🗑️ Clear All</button>
             </div>
-          </div>
+        </div>
 
-          {/* Sorting Controls */}
-          <div className="bg-gray-50 p-4 rounded-lg mb-6 text-center">
-            <div className="flex gap-4 justify-center items-center flex-wrap">
-              <span className="font-medium text-gray-700">Sort by:</span>
-              <select
-                value={sortField}
-                onChange={(e) => setSortField(e.target.value)}
-                className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-              >
-                <option value="date">Date</option>
-                <option value="stock">Stock Name</option>
-                <option value="ratio">Ratio</option>
-                <option value="target">Target</option>
-                <option value="percentage">Up/Down %</option>
-              </select>
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-                className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-              >
-                <option value="desc">Decrease (High to Low)</option>
-                <option value="asc">Increase (Low to High)</option>
-              </select>
+        <div class="sorting-section">
+            <div class="sort-controls">
+                <span class="sort-label">Sort by:</span>
+                <select id="sortField" onchange="sortStocks()">
+                    <option value="date">Date</option>
+                    <option value="stock">Stock Name</option>
+                    <option value="ratio">Margin Ratio</option>
+                    <option value="target">Target</option>
+                    <option value="percentage">Up/Down %</option>
+                </select>
+                <select id="sortOrder" onchange="sortStocks()">
+                    <option value="desc">Decrease (High to Low)</option>
+                    <option value="asc">Increase (Low to High)</option>
+                </select>
             </div>
-          </div>
+        </div>
 
-          {/* Stock Table */}
-          <div className="overflow-x-auto rounded-lg border border-gray-200">
-            <table className="w-full">
-              <thead className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                <tr>
-                  <th className="px-6 py-4 text-left font-semibold">Date & Time</th>
-                  <th className="px-6 py-4 text-left font-semibold">Stock</th>
-                  <th className="px-6 py-4 text-left font-semibold">Ratio</th>
-                  <th className="px-6 py-4 text-left font-semibold">Target</th>
-                  <th className="px-6 py-4 text-left font-semibold">Up/Down %</th>
-                  <th className="px-6 py-4 text-left font-semibold">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedStocks.map((stock, index) => (
-                  <tr key={stock.id} className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50 transition-colors`}>
-                    <td className="px-6 py-4 text-sm text-gray-600">{stock.datetime}</td>
-                    <td className="px-6 py-4 font-semibold text-gray-800">{stock.stock}</td>
-                    <td className="px-6 py-4 font-semibold text-blue-600">{stock.ratio}</td>
-                    <td className="px-6 py-4 font-semibold text-green-600">${stock.target}</td>
-                    <td className={`px-6 py-4 font-semibold ${stock.percentage > 0 ? 'text-green-600' : stock.percentage < 0 ? 'text-red-600' : 'text-gray-600'}`}>
-                      {stock.percentage > 0 ? '+' : ''}{stock.percentage}%
-                    </td>
-                    <td className="px-6 py-4">
-                      <button
-                        onClick={() => deleteStock(stock.id)}
-                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm transition-colors duration-200"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
+        <input type="file" id="fileInput" class="file-input" accept=".json" onchange="uploadData(event)" />
+        
+        <div id="statusMessage" class="status-message"></div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Stock</th>
+                        <th>Margin Ratio</th>
+                        <th>Target</th>
+                        <th>Up/Down %</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="stocksTable">
+                    <!-- Stocks will be added here -->
+                </tbody>
             </table>
-            {sortedStocks.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No stocks added yet. Use the calculator above and add your first stock!
-              </div>
-            )}
-          </div>
         </div>
-      </div>
     </div>
-  );
-}
+
+    <script>
+        let stocks = [];
+        let calculatorResult = null;
+
+        // Calculator Functions
+        function formatNumber(num) {
+            if (!num) return '';
+            const cleanNum = num.toString().replace(/[^\d.]/g, '');
+            const parts = cleanNum.split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return parts.join('.');
+        }
+
+        function parseNumber(str) {
+            if (!str) return 0;
+            return parseFloat(str.replace(/,/g, '')) || 0;
+        }
+
+        function handleVolumeChange(input) {
+            const value = input.value;
+            const numericValue = value.replace(/[^\d]/g, '');
+            const formattedValue = numericValue ? formatNumber(numericValue) : '';
+            input.value = formattedValue;
+            calculateWeightedAverage();
+        }
+
+        function handlePriceChange(input) {
+            const value = input.value;
+            const cleanValue = value.replace(/[^\d.,]/g, '');
+            input.value = cleanValue;
+            calculateWeightedAverage();
+        }
+
+        function calculateWeightedAverage() {
+            const p1 = parseNumber(document.getElementById('price1').value);
+            const v1 = parseNumber(document.getElementById('volume1').value);
+            const p2 = parseNumber(document.getElementById('price2').value);
+            const v2 = parseNumber(document.getElementById('volume2').value);
+
+            const resultSection = document.getElementById('calculatorResult');
+            const transferBtn = document.getElementById('transferBtn');
+
+            if (p1 > 0 && v1 > 0 && p2 > 0 && v2 > 0) {
+                const totalValue = (p1 * v1) + (p2 * v2);
+                const totalVolume = v1 + v2;
+                const weightedAverage = totalValue / totalVolume;
+
+                calculatorResult = {
+                    weightedAverage: weightedAverage,
+                    totalValue: totalValue,
+                    totalVolume: totalVolume
+                };
+
+                document.getElementById('resultValue').textContent = `$${weightedAverage.toFixed(4)}`;
+                document.getElementById('totalValue').textContent = `$${totalValue.toLocaleString()}`;
+                document.getElementById('totalVolume').textContent = `${totalVolume.toLocaleString()} units`;
+
+                resultSection.style.display = 'block';
+                transferBtn.disabled = false;
+            } else {
+                resultSection.style.display = 'none';
+                transferBtn.disabled = true;
+                calculatorResult = null;
+            }
+        }
+
+        function transferToTarget() {
+            if (calculatorResult) {
+                const targetInput = document.getElementById('targetInput');
+                targetInput.value = calculatorResult.weightedAverage.toFixed(4);
+                targetInput.classList.add('highlight-target');
+                
+                setTimeout(() => {
+                    targetInput.classList.remove('highlight-target');
+                }, 2000);
+                
+                showStatus('Weighted average transferred to target price!', 'success');
+            }
+        }
+
+        // Stock Notes Functions
+        function getCurrentDateTime() {
+            const now = new Date();
+            return now.toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+
+        function addStock() {
+            const stockInput = document.getElementById('stockInput');
+            const ratioInput = document.getElementById('ratioInput');
+            const targetInput = document.getElementById('targetInput');
+            const percentageInput = document.getElementById('percentageInput');
+            
+            const stockName = stockInput.value.trim();
+            const ratio = parseFloat(ratioInput.value) || 0;
+            const target = parseFloat(targetInput.value) || 0;
+            const percentage = parseFloat(percentageInput.value) || 0;
+            
+            if (!stockName) {
+                showStatus('Please enter a stock name!', 'error');
+                return;
+            }
+
+            const stock = {
+                id: Date.now(),
+                datetime: getCurrentDateTime(),
+                stock: stockName,
+                ratio: ratio,
+                target: target,
+                percentage: percentage
+            };
+
+            stocks.push(stock);
+            sortStocks();
+            
+            // Clear inputs
+            stockInput.value = '';
+            ratioInput.value = '';
+            targetInput.value = '';
+            percentageInput.value = '';
+            
+            showStatus('Stock added successfully!', 'success');
+        }
+
+        function formatPercentage(value) {
+            if (value === 0) return '0%';
+            const formatted = value > 0 ? `+${value}%` : `${value}%`;
+            return formatted;
+        }
+
+        function renderStocks() {
+            const tbody = document.getElementById('stocksTable');
+            tbody.innerHTML = '';
+
+            stocks.forEach(stock => {
+                const row = document.createElement('tr');
+                const percentageClass = stock.percentage > 0 ? 'up-percentage' : 
+                                     stock.percentage < 0 ? 'down-percentage' : '';
+                
+                row.innerHTML = `
+                    <td>${stock.datetime}</td>
+                    <td><strong>${stock.stock}</strong></td>
+                    <td class="margin-ratio-cell">${stock.ratio}</td>
+                    <td class="target-cell">${stock.target}</td>
+                    <td class="${percentageClass}">${formatPercentage(stock.percentage)}</td>
+                    <td><button class="delete-btn" onclick="deleteStock(${stock.id})">Delete</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function deleteStock(id) {
+            stocks = stocks.filter(stock => stock.id !== id);
+            renderStocks();
+            showStatus('Stock deleted successfully!', 'success');
+        }
+
+        function sortStocks() {
+            const sortField = document.getElementById('sortField').value;
+            const sortOrder = document.getElementById('sortOrder').value;
+            
+            stocks.sort((a, b) => {
+                let valueA, valueB;
+                
+                switch(sortField) {
+                    case 'date':
+                        valueA = new Date(a.datetime);
+                        valueB = new Date(b.datetime);
+                        break;
+                    case 'stock':
+                        valueA = a.stock.toLowerCase();
+                        valueB = b.stock.toLowerCase();
+                        break;
+                    case 'ratio':
+                        valueA = a.ratio;
+                        valueB = b.ratio;
+                        break;
+                    case 'target':
+                        valueA = a.target;
+                        valueB = b.target;
+                        break;
+                    case 'percentage':
+                        valueA = a.percentage;
+                        valueB = b.percentage;
+                        break;
+                    default:
+                        return 0;
+                }
+                
+                if (sortOrder === 'asc') {
+                    return valueA > valueB ? 1 : valueA < valueB ? -1 : 0;
+                } else {
+                    return valueA < valueB ? 1 : valueA > valueB ? -1 : 0;
+                }
+            });
+            
+            renderStocks();
+        }
+
+        function saveData() {
+            const dataStr = JSON.stringify(stocks, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `stock_notes_${new Date().toISOString().slice(0, 10)}.json`;
+            link.click();
+            
+            showStatus('Data saved successfully!', 'success');
+        }
+
+        function uploadData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const uploadedStocks = JSON.parse(e.target.result);
+                    if (Array.isArray(uploadedStocks)) {
+                        stocks = uploadedStocks;
+                        sortStocks();
+                        showStatus('Data uploaded successfully!', 'success');
+                    } else {
+                        showStatus('Invalid file format!', 'error');
+                    }
+                } catch (error) {
+                    showStatus('Error reading file!', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function clearAll() {
+            if (confirm('Are you sure you want to clear all stocks?')) {
+                stocks = [];
+                renderStocks();
+                showStatus('All stocks cleared!', 'success');
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.textContent = message;
+            statusDiv.className = `status-message ${type} show`;
+            
+            setTimeout(() => {
+                statusDiv.classList.remove('show');
+            }, 3000);
+        }
+
+        // Event Listeners
+        document.getElementById('price1').addEventListener('input', function() {
+            handlePriceChange(this);
+        });
+
+        document.getElementById('volume1').addEventListener('input', function() {
+            handleVolumeChange(this);
+        });
+
+        document.getElementById('price2').addEventListener('input', function() {
+            handlePriceChange(this);
+        });
+
+        document.getElementById('volume2').addEventListener('input', function() {
+            handleVolumeChange(this);
+        });
+
+        // Allow Enter key to add stock
+        ['stockInput', 'ratioInput', 'targetInput', 'percentageInput'].forEach(id => {
+            document.getElementById(id).addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    addStock();
+                }
+            });
+        });
+
+        // Initialize
+        window.onload = function() {
+            showStatus('Welcome! Calculate weighted averages and track your stocks.', 'success');
+        };
+    </script>
+</body>
+</html>
