@@ -1,0 +1,495 @@
+import React, { useState, useEffect } from 'react';
+import { Calculator, TrendingUp, Plus } from 'lucide-react';
+
+export default function MergedStockApp() {
+  // Calculator states
+  const [price1, setPrice1] = useState('');
+  const [volume1, setVolume1] = useState('');
+  const [price2, setPrice2] = useState('');
+  const [volume2, setVolume2] = useState('');
+  const [result, setResult] = useState(null);
+
+  // Stock notes states
+  const [stocks, setStocks] = useState([]);
+  const [stockInput, setStockInput] = useState('');
+  const [ratioInput, setRatioInput] = useState('');
+  const [targetInput, setTargetInput] = useState('');
+  const [percentageInput, setPercentageInput] = useState('');
+  const [sortField, setSortField] = useState('date');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [statusMessage, setStatusMessage] = useState('');
+  const [statusType, setStatusType] = useState('');
+
+  // Format number with commas for display
+  const formatNumber = (num) => {
+    if (!num) return '';
+    const cleanNum = num.toString().replace(/[^\d.]/g, '');
+    const parts = cleanNum.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+  };
+
+  // Remove commas for calculation
+  const parseNumber = (str) => {
+    if (!str) return 0;
+    return parseFloat(str.replace(/,/g, '')) || 0;
+  };
+
+  // Handle volume input with automatic comma formatting
+  const handleVolumeChange = (value, setter) => {
+    const numericValue = value.replace(/[^\d]/g, '');
+    const formattedValue = numericValue ? formatNumber(numericValue) : '';
+    setter(formattedValue);
+  };
+
+  // Handle price input (allows decimals)
+  const handlePriceChange = (value, setter) => {
+    const cleanValue = value.replace(/[^\d.,]/g, '');
+    setter(cleanValue);
+  };
+
+  // Calculate weighted average
+  const calculateWeightedAverage = () => {
+    const p1 = parseNumber(price1);
+    const v1 = parseNumber(volume1);
+    const p2 = parseNumber(price2);
+    const v2 = parseNumber(volume2);
+
+    if (p1 <= 0 || v1 <= 0 || p2 <= 0 || v2 <= 0) {
+      setResult({ error: 'All values must be greater than 0' });
+      return;
+    }
+
+    const totalValue = (p1 * v1) + (p2 * v2);
+    const totalVolume = v1 + v2;
+    const weightedAverage = totalValue / totalVolume;
+
+    setResult({
+      weightedAverage: weightedAverage.toFixed(4),
+      totalValue: totalValue.toLocaleString(),
+      totalVolume: totalVolume.toLocaleString(),
+      price1: p1,
+      volume1: v1.toLocaleString(),
+      price2: p2,
+      volume2: v2.toLocaleString()
+    });
+  };
+
+  // Auto-calculate when inputs change
+  useEffect(() => {
+    if (price1 && volume1 && price2 && volume2) {
+      calculateWeightedAverage();
+    } else {
+      setResult(null);
+    }
+  }, [price1, volume1, price2, volume2]);
+
+  // Transfer calculated price to target input
+  const transferToTarget = () => {
+    if (result && !result.error) {
+      setTargetInput(result.weightedAverage);
+      showStatus('Weighted average transferred to target price!', 'success');
+    }
+  };
+
+  // Get current date time
+  const getCurrentDateTime = () => {
+    const now = new Date();
+    return now.toLocaleString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  // Add stock to notes
+  const addStock = () => {
+    const stockName = stockInput.trim();
+    const ratio = parseFloat(ratioInput) || 0;
+    const target = parseFloat(targetInput) || 0;
+    const percentage = parseFloat(percentageInput) || 0;
+    
+    if (!stockName) {
+      showStatus('Please enter a stock name!', 'error');
+      return;
+    }
+
+    const stock = {
+      id: Date.now(),
+      datetime: getCurrentDateTime(),
+      stock: stockName,
+      ratio: ratio,
+      target: target,
+      percentage: percentage
+    };
+
+    setStocks(prev => [...prev, stock]);
+    
+    // Clear inputs
+    setStockInput('');
+    setRatioInput('');
+    setTargetInput('');
+    setPercentageInput('');
+    
+    showStatus('Stock added successfully!', 'success');
+  };
+
+  // Delete stock
+  const deleteStock = (id) => {
+    setStocks(prev => prev.filter(stock => stock.id !== id));
+    showStatus('Stock deleted successfully!', 'success');
+  };
+
+  // Show status message
+  const showStatus = (message, type) => {
+    setStatusMessage(message);
+    setStatusType(type);
+    setTimeout(() => {
+      setStatusMessage('');
+      setStatusType('');
+    }, 3000);
+  };
+
+  // Sort stocks
+  const sortedStocks = [...stocks].sort((a, b) => {
+    let valueA, valueB;
+    
+    switch(sortField) {
+      case 'date':
+        valueA = new Date(a.datetime);
+        valueB = new Date(b.datetime);
+        break;
+      case 'stock':
+        valueA = a.stock.toLowerCase();
+        valueB = b.stock.toLowerCase();
+        break;
+      case 'ratio':
+        valueA = a.ratio;
+        valueB = b.ratio;
+        break;
+      case 'target':
+        valueA = a.target;
+        valueB = b.target;
+        break;
+      case 'percentage':
+        valueA = a.percentage;
+        valueB = b.percentage;
+        break;
+      default:
+        return 0;
+    }
+    
+    if (sortOrder === 'asc') {
+      return valueA > valueB ? 1 : valueA < valueB ? -1 : 0;
+    } else {
+      return valueA < valueB ? 1 : valueA > valueB ? -1 : 0;
+    }
+  });
+
+  // Reset calculator
+  const resetCalculator = () => {
+    setPrice1('');
+    setVolume1('');
+    setPrice2('');
+    setVolume2('');
+    setResult(null);
+  };
+
+  // Clear all stocks
+  const clearAllStocks = () => {
+    if (window.confirm('Are you sure you want to clear all stocks?')) {
+      setStocks([]);
+      showStatus('All stocks cleared!', 'success');
+    }
+  };
+
+  // Save data
+  const saveData = () => {
+    const dataStr = JSON.stringify(stocks, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = `stock_notes_${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    
+    showStatus('Data saved successfully!', 'success');
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
+      <div className="max-w-7xl mx-auto space-y-8">
+        
+        {/* Header */}
+        <div className="text-center">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+            📈 Stock Trading Calculator & Notes
+          </h1>
+          <p className="text-gray-600">Calculate weighted averages and track your stock positions</p>
+        </div>
+
+        {/* Status Message */}
+        {statusMessage && (
+          <div className={`text-center p-4 rounded-lg font-medium transition-all duration-300 ${
+            statusType === 'success' 
+              ? 'bg-green-100 text-green-700 border-2 border-green-200' 
+              : 'bg-red-100 text-red-700 border-2 border-red-200'
+          }`}>
+            {statusMessage}
+          </div>
+        )}
+
+        {/* Calculator Section */}
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <div className="flex items-center justify-center mb-6">
+            <Calculator className="w-8 h-8 text-blue-600 mr-3" />
+            <h2 className="text-2xl font-bold text-gray-800">Volume Weighted Average Calculator</h2>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 mb-8">
+            {/* Series 1 */}
+            <div className="bg-blue-50 p-6 rounded-xl border-2 border-blue-200">
+              <h3 className="text-xl font-semibold text-blue-800 mb-4">Series 1</h3>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Price 1 ($)</label>
+                <input
+                  type="text"
+                  value={price1}
+                  onChange={(e) => handlePriceChange(e.target.value, setPrice1)}
+                  placeholder="0.00"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Volume 1 (units)</label>
+                <input
+                  type="text"
+                  value={volume1}
+                  onChange={(e) => handleVolumeChange(e.target.value, setVolume1)}
+                  placeholder="0"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg font-mono"
+                />
+              </div>
+            </div>
+
+            {/* Series 2 */}
+            <div className="bg-green-50 p-6 rounded-xl border-2 border-green-200">
+              <h3 className="text-xl font-semibold text-green-800 mb-4">Series 2</h3>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Price 2 ($)</label>
+                <input
+                  type="text"
+                  value={price2}
+                  onChange={(e) => handlePriceChange(e.target.value, setPrice2)}
+                  placeholder="0.00"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none text-lg font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Volume 2 (units)</label>
+                <input
+                  type="text"
+                  value={volume2}
+                  onChange={(e) => handleVolumeChange(e.target.value, setVolume2)}
+                  placeholder="0"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none text-lg font-mono"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Calculator Results */}
+          {result && (
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border-2 border-purple-200 mb-6">
+              <h3 className="text-xl font-semibold text-purple-800 mb-4">Calculation Results</h3>
+              
+              {result.error ? (
+                <div className="text-red-600 font-medium">{result.error}</div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center p-4 bg-white rounded-lg border">
+                    <span className="font-medium text-gray-700">Volume Weighted Average Price:</span>
+                    <span className="text-2xl font-bold text-purple-600">${result.weightedAverage}</span>
+                  </div>
+                  
+                  <div className="flex justify-center">
+                    <button
+                      onClick={transferToTarget}
+                      className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 flex items-center gap-2"
+                    >
+                      <TrendingUp className="w-5 h-5" />
+                      Use as Target Price
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="text-center">
+            <button
+              onClick={resetCalculator}
+              className="bg-gray-500 hover:bg-gray-600 text-white font-medium py-3 px-8 rounded-lg transition-colors duration-200"
+            >
+              Reset Calculator
+            </button>
+          </div>
+        </div>
+
+        {/* Stock Notes Section */}
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <div className="flex items-center justify-center mb-6">
+            <TrendingUp className="w-8 h-8 text-green-600 mr-3" />
+            <h2 className="text-2xl font-bold text-gray-800">Stock Notes</h2>
+          </div>
+
+          {/* Input Section */}
+          <div className="bg-gray-50 p-6 rounded-xl mb-6">
+            <div className="grid md:grid-cols-4 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Stock Symbol</label>
+                <input
+                  type="text"
+                  value={stockInput}
+                  onChange={(e) => setStockInput(e.target.value)}
+                  placeholder="AAPL, TSLA, etc."
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ratio</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={ratioInput}
+                  onChange={(e) => setRatioInput(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Target Price ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={targetInput}
+                  onChange={(e) => setTargetInput(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none bg-green-50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Up/Down %</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={percentageInput}
+                  onChange={(e) => setPercentageInput(e.target.value)}
+                  placeholder="±0.00"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-4 justify-center flex-wrap">
+              <button
+                onClick={addStock}
+                className="bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 flex items-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                Add Stock
+              </button>
+              <button
+                onClick={saveData}
+                className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200"
+              >
+                💾 Save Data
+              </button>
+              <button
+                onClick={clearAllStocks}
+                className="bg-red-500 hover:bg-red-600 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200"
+              >
+                🗑️ Clear All
+              </button>
+            </div>
+          </div>
+
+          {/* Sorting Controls */}
+          <div className="bg-gray-50 p-4 rounded-lg mb-6 text-center">
+            <div className="flex gap-4 justify-center items-center flex-wrap">
+              <span className="font-medium text-gray-700">Sort by:</span>
+              <select
+                value={sortField}
+                onChange={(e) => setSortField(e.target.value)}
+                className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
+              >
+                <option value="date">Date</option>
+                <option value="stock">Stock Name</option>
+                <option value="ratio">Ratio</option>
+                <option value="target">Target</option>
+                <option value="percentage">Up/Down %</option>
+              </select>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
+              >
+                <option value="desc">Decrease (High to Low)</option>
+                <option value="asc">Increase (Low to High)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Stock Table */}
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full">
+              <thead className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                <tr>
+                  <th className="px-6 py-4 text-left font-semibold">Date & Time</th>
+                  <th className="px-6 py-4 text-left font-semibold">Stock</th>
+                  <th className="px-6 py-4 text-left font-semibold">Ratio</th>
+                  <th className="px-6 py-4 text-left font-semibold">Target</th>
+                  <th className="px-6 py-4 text-left font-semibold">Up/Down %</th>
+                  <th className="px-6 py-4 text-left font-semibold">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedStocks.map((stock, index) => (
+                  <tr key={stock.id} className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50 transition-colors`}>
+                    <td className="px-6 py-4 text-sm text-gray-600">{stock.datetime}</td>
+                    <td className="px-6 py-4 font-semibold text-gray-800">{stock.stock}</td>
+                    <td className="px-6 py-4 font-semibold text-blue-600">{stock.ratio}</td>
+                    <td className="px-6 py-4 font-semibold text-green-600">${stock.target}</td>
+                    <td className={`px-6 py-4 font-semibold ${stock.percentage > 0 ? 'text-green-600' : stock.percentage < 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                      {stock.percentage > 0 ? '+' : ''}{stock.percentage}%
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => deleteStock(stock.id)}
+                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm transition-colors duration-200"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {sortedStocks.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                No stocks added yet. Use the calculator above and add your first stock!
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
